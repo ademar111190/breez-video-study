@@ -1,0 +1,34 @@
+# Os Files
+.DS_Store
+
+# Vim
+*.swp
+
+# InteliJ
+*.iml
+.idea
+
+# Dart
+.dart_tool
+
+# Generated
+app.*.map.json
+pubspec.lock
+.packages
+generated_plugin_registrant.dart
+*.mocks.dart
+
+# Output
+.android
+.flutter-plugins
+.flutter-plugins-dependencies
+.ios
+build
+framework-output
+magalupay
+
+# Coverage
+coverage
+
+# Firebase
+.firebase
