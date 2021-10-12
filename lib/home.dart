@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui';
 
 import 'package:breezvideo/consts.dart';
 import 'package:flutter/material.dart';
@@ -14,9 +16,51 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final ReceivePort _port = ReceivePort();
   var _moment = Moment.INITIAL;
   var _errorMsg = "";
   var _downloadMsg = "";
+
+  _HomePageState() {
+    IsolateNameServer.registerPortWithName(_port.sendPort, 'downloader_port');
+    _port.listen((dynamic data) {
+      final id = data[0] as String;
+      final status = data[1] as DownloadTaskStatus;
+      final progress = data[2] as int;
+
+      switch (status.value) {
+        case 1: // enqueued
+          _downloadMsg = 'Download requested';
+          _setMoment(Moment.DOWNLOADING);
+          break;
+        case 2: // running
+          _downloadMsg = 'Downloading $progress%';
+          _setMoment(Moment.DOWNLOADING);
+          break;
+        case 3: // complete
+          _downloadMsg = 'Download completed';
+          _setMoment(Moment.DOWNLOADING);
+          break;
+        case 4: // failed
+          _downloadMsg = 'Download failed';
+          _setMoment(Moment.DOWNLOADING);
+          break;
+        case 5: // canceled
+          _downloadMsg = 'Download canceled';
+          _setMoment(Moment.DOWNLOADING);
+          break;
+        case 6: // paused
+          _downloadMsg = 'Download pause';
+          _setMoment(Moment.DOWNLOADING);
+          break;
+        default:
+          _downloadMsg = 'Downloading ???';
+          _setMoment(Moment.DOWNLOADING);
+          break;
+      }
+    });
+    FlutterDownloader.registerCallback(_callback);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -112,40 +156,11 @@ class _HomePageState extends State<HomePage> {
       _errorMsg = e.toString();
       _setMoment(Moment.ERROR);
     }
-    FlutterDownloader.registerCallback(_downloadCallback);
   }
 
-  void _downloadCallback(String id, DownloadTaskStatus status, int progress) {
-    switch (status.value) {
-      case 1: // enqueued
-        _downloadMsg = 'Download requested';
-        _setMoment(Moment.DOWNLOADING);
-        break;
-      case 2: // running
-        _downloadMsg = 'Downloading $progress%';
-        _setMoment(Moment.DOWNLOADING);
-        break;
-      case 3: // complete
-        _downloadMsg = 'Download completed';
-        _setMoment(Moment.DOWNLOADING);
-        break;
-      case 4: // failed
-        _downloadMsg = 'Download failed';
-        _setMoment(Moment.DOWNLOADING);
-        break;
-      case 5: // canceled
-        _downloadMsg = 'Download canceled';
-        _setMoment(Moment.DOWNLOADING);
-        break;
-      case 6: // paused
-        _downloadMsg = 'Download pause';
-        _setMoment(Moment.DOWNLOADING);
-        break;
-      default:
-        _downloadMsg = 'Downloading ???';
-        _setMoment(Moment.DOWNLOADING);
-        break;
-    }
+  static void _callback(String id, DownloadTaskStatus status, int progress) {
+    final send = IsolateNameServer.lookupPortByName('downloader_port');
+    send?.send([id, status, progress]);
   }
 
   Future<String> _getStorageDirectory() async {
