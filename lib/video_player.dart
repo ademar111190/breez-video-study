@@ -37,6 +37,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
               url: widget._videoUri,
               loop: false,
               desiredState: _desiredState,
+              onViewCreated: (_) {},
             ),
           ),
           Row(
