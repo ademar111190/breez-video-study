@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:breezvideo/consts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_playout/video.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -20,6 +21,9 @@ class _HomePageState extends State<HomePage> {
   var _moment = Moment.INITIAL;
   var _errorMsg = "";
   var _downloadMsg = "";
+  var _name = "";
+  var _file = "";
+  String? _taskId;
 
   _HomePageState() {
     IsolateNameServer.registerPortWithName(_port.sendPort, 'downloader_port');
@@ -39,11 +43,17 @@ class _HomePageState extends State<HomePage> {
           break;
         case 3: // complete
           _downloadMsg = 'Download completed';
-          _setMoment(Moment.DOWNLOADING);
+          _setMoment(Moment.DONE);
           break;
         case 4: // failed
           _downloadMsg = 'Download failed';
           _setMoment(Moment.DOWNLOADING);
+          Future.delayed(Duration(seconds: 3)).then((_) {
+            final taskId = _taskId;
+            if (taskId != null) {
+              FlutterDownloader.retry(taskId: taskId);
+            }
+          });
           break;
         case 5: // canceled
           _downloadMsg = 'Download canceled';
@@ -87,6 +97,8 @@ class _HomePageState extends State<HomePage> {
         return _bodyInitial();
       case Moment.DOWNLOADING:
         return _bodyDownloading();
+      case Moment.DONE:
+        return _bodyDone();
       case Moment.ERROR:
         return _bodyError();
     }
@@ -119,6 +131,30 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _bodyDone() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Video(
+              autoPlay: true,
+              showControls: true,
+              title: "A title",
+              subtitle: "S subtitle",
+              isLiveStream: false,
+              position: 0,
+              url: _file,
+              loop: false,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _bodyError() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -142,13 +178,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _download() async {
+    _name = "a_name_${DateTime.now().millisecondsSinceEpoch}.mp4";
     _downloadMsg = 'Downloading…';
     _setMoment(Moment.DOWNLOADING);
 
+    final dir = await _getStorageDirectory();
+    _file = join(dir, _name);
     try {
-      final taskId = await FlutterDownloader.enqueue(
+      _taskId = await FlutterDownloader.enqueue(
         url: URL,
-        savedDir: await _getStorageDirectory(),
+        fileName: _name,
+        savedDir: dir,
         showNotification: true,
         openFileFromNotification: true,
       );
@@ -174,5 +214,6 @@ class _HomePageState extends State<HomePage> {
 enum Moment {
   INITIAL,
   DOWNLOADING,
+  DONE,
   ERROR,
 }
