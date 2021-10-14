@@ -3,9 +3,9 @@ import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:breezvideo/consts.dart';
+import 'package:breezvideo/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
-import 'package:flutter_playout/video.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -95,6 +95,8 @@ class _HomePageState extends State<HomePage> {
     switch (_moment) {
       case Moment.INITIAL:
         return _bodyInitial();
+      case Moment.STREAMED:
+        return _bodyStreamed();
       case Moment.DOWNLOADING:
         return _bodyDownloading();
       case Moment.DONE:
@@ -110,15 +112,23 @@ class _HomePageState extends State<HomePage> {
       children: [
         Center(
           child: ElevatedButton(
-            child: Text('Start download'),
-            onPressed: () {
-              _download();
-            },
+            child: Text('Start download to play file locally'),
+            onPressed: () => _download(),
+          ),
+        ),
+        Center(
+          child: ElevatedButton(
+            child: Text('Start streamed play'),
+            onPressed: () => _streamed(),
           ),
         ),
       ],
     );
   }
+
+  Widget _bodyStreamed() => VideoPlayer(URL);
+
+  Widget _bodyDone() => VideoPlayer(_file);
 
   Widget _bodyDownloading() {
     return Column(
@@ -128,30 +138,6 @@ class _HomePageState extends State<HomePage> {
           child: Text(_downloadMsg),
         ),
       ],
-    );
-  }
-
-  Widget _bodyDone() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Video(
-              autoPlay: true,
-              showControls: true,
-              title: "A title",
-              subtitle: "S subtitle",
-              isLiveStream: false,
-              position: 0,
-              url: _file,
-              loop: false,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -198,6 +184,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _streamed() {
+    _setMoment(Moment.STREAMED);
+  }
+
   static void _callback(String id, DownloadTaskStatus status, int progress) {
     final send = IsolateNameServer.lookupPortByName('downloader_port');
     send?.send([id, status, progress]);
@@ -213,6 +203,7 @@ class _HomePageState extends State<HomePage> {
 
 enum Moment {
   INITIAL,
+  STREAMED,
   DOWNLOADING,
   DONE,
   ERROR,
